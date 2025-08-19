@@ -1,5 +1,6 @@
 import streamlit as st
 from src.sidebar import render_sidebar
+from src.main import render_main
 
 st.set_page_config(
     page_title="DataVision EBAC SEMANTIX",
@@ -18,6 +19,8 @@ def main():
     st.markdown("---")
     inicializar_session_state()
     render_sidebar()
+    render_main()
+
 
 if __name__ == "__main__":
     main()
