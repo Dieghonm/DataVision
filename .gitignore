@@ -1,0 +1,14 @@
+# Ambiente virtual - NUNCA versionar isso!
+venv/
+.venv
+env/
+
+# Arquivos compilados do Python
+__pycache__/
+*.pyc
+
+# Configurações secretas do Streamlit
+.streamlit/secrets.toml
+
+# Variáveis de ambiente (senhas, tokens, etc)
+.env
