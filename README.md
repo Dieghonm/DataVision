@@ -80,6 +80,9 @@ meu-app-streamlit/
 │
 ├── data/                  # Dados do projeto
 │   ├── raw/              # Dados brutos
+│        ├── credit_scoring.ftr
+│        ├── hypertension_dataset.csv
+│        └──teen_phone_addiction_dataset.csv
 │   └── processed/        # Dados processados
 │
 ├── assets/               # Recursos estáticos

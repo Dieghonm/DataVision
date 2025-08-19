@@ -46,35 +46,106 @@ def load_dataset(data_source, uploaded_file=None):
             return df, "Breast Cancer Dataset"
 
         elif data_source == "Credit":
-            # Verificar se o arquivo existe
+            # Tentar carregar o arquivo real primeiro
             file_path = "data/raw/credit_scoring.ftr"
             if os.path.exists(file_path):
-                df = pd.read_feather(file_path)
+                try:
+                    df = pd.read_feather(file_path)
+                    # Garantir que existe uma coluna target
+                    if 'target' not in df.columns:
+                        # Procurar por colunas que possam ser target
+                        possible_targets = ['approved', 'default', 'risk', 'loan_status', 'result']
+                        for col in possible_targets:
+                            if col in df.columns:
+                                df['target'] = df[col]
+                                break
+                    
+                    # Criar target_name se não existir
+                    if 'target_name' not in df.columns and 'target' in df.columns:
+                        unique_targets = df['target'].unique()
+                        if len(unique_targets) == 2:
+                            # Binário - assumir 0=Negado, 1=Aprovado
+                            df['target_name'] = df['target'].map({0: 'Denied', 1: 'Approved'})
+                        else:
+                            df['target_name'] = df['target'].astype(str)
+                    
+                    return df, "Credit Scoring Dataset"
+                except Exception as e:
+                    st.warning(f"⚠️ Erro ao ler arquivo {file_path}: {str(e)}. Usando dados sintéticos.")
             else:
-                # Gerar dados sintéticos se o arquivo não existir
-                df = _generate_credit_data()
-                st.warning("⚠️ Arquivo original não encontrado. Usando dados sintéticos.")
-            return df, "Credit Scoring Dataset"
+                st.warning(f"⚠️ Arquivo {file_path} não encontrado. Usando dados sintéticos.")
+            
+            # Se não conseguiu carregar, gerar dados sintéticos
+            df = _generate_credit_data()
+            return df, "Credit Scoring Dataset (Sintético)"
 
         elif data_source == "Hipertension":
             file_path = "data/raw/hypertension_dataset.csv"
             if os.path.exists(file_path):
-                df = pd.read_csv(file_path)
+                try:
+                    df = pd.read_csv(file_path)
+                    
+                    # Garantir que existe uma coluna target
+                    if 'target' not in df.columns:
+                        # Procurar por colunas que possam ser target
+                        possible_targets = ['hypertension', 'bp_status', 'diagnosis', 'result', 'class']
+                        for col in possible_targets:
+                            if col in df.columns:
+                                df['target'] = df[col]
+                                break
+                    
+                    # Criar target_name se não existir
+                    if 'target_name' not in df.columns and 'target' in df.columns:
+                        unique_targets = df['target'].unique()
+                        if len(unique_targets) == 2:
+                            # Binário - assumir 0=Normal, 1=Hipertensivo
+                            df['target_name'] = df['target'].map({0: 'Normal', 1: 'Hypertensive'})
+                        else:
+                            df['target_name'] = df['target'].astype(str)
+                    
+                    return df, "Hypertension Dataset"
+                except Exception as e:
+                    st.warning(f"⚠️ Erro ao ler arquivo {file_path}: {str(e)}. Usando dados sintéticos.")
             else:
-                # Gerar dados sintéticos se o arquivo não existir
-                df = _generate_hypertension_data()
-                st.warning("⚠️ Arquivo original não encontrado. Usando dados sintéticos.")
-            return df, "Hypertension Dataset"
+                st.warning(f"⚠️ Arquivo {file_path} não encontrado. Usando dados sintéticos.")
+            
+            # Se não conseguiu carregar, gerar dados sintéticos
+            df = _generate_hypertension_data()
+            return df, "Hypertension Dataset (Sintético)"
 
         elif data_source == "Phone addiction":
             file_path = "data/raw/teen_phone_addiction_dataset.csv"
             if os.path.exists(file_path):
-                df = pd.read_csv(file_path)
+                try:
+                    df = pd.read_csv(file_path)
+                    
+                    # Garantir que existe uma coluna target
+                    if 'target' not in df.columns:
+                        # Procurar por colunas que possam ser target
+                        possible_targets = ['addiction', 'addicted', 'phone_addiction', 'result', 'class', 'status']
+                        for col in possible_targets:
+                            if col in df.columns:
+                                df['target'] = df[col]
+                                break
+                    
+                    # Criar target_name se não existir
+                    if 'target_name' not in df.columns and 'target' in df.columns:
+                        unique_targets = df['target'].unique()
+                        if len(unique_targets) == 2:
+                            # Binário - assumir 0=Normal, 1=Viciado
+                            df['target_name'] = df['target'].map({0: 'Normal', 1: 'Addicted'})
+                        else:
+                            df['target_name'] = df['target'].astype(str)
+                    
+                    return df, "Teen Phone Addiction Dataset"
+                except Exception as e:
+                    st.warning(f"⚠️ Erro ao ler arquivo {file_path}: {str(e)}. Usando dados sintéticos.")
             else:
-                # Gerar dados sintéticos se o arquivo não existir
-                df = _generate_phone_addiction_data()
-                st.warning("⚠️ Arquivo original não encontrado. Usando dados sintéticos.")
-            return df, "Teen Phone Addiction Dataset"
+                st.warning(f"⚠️ Arquivo {file_path} não encontrado. Usando dados sintéticos.")
+            
+            # Se não conseguiu carregar, gerar dados sintéticos
+            df = _generate_phone_addiction_data()
+            return df, "Teen Phone Addiction Dataset (Sintético)"
         
         elif data_source == "upload":
             return None, None

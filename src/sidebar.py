@@ -15,7 +15,9 @@ def render_sidebar():
         st.session_state.categoria = "Pipeline"
         pipeline_config = pipeline_sidebar()
         st.session_state.pipeline_config = pipeline_config
-        st.write(st.session_state.pipeline_config['data_source'])
+        
+        if pipeline_config and pipeline_config.get('data_source'):
+            st.sidebar.success(f"Dataset: {pipeline_config['data_source']}")
 
     else:
         st.session_state.categoria = "Modelo"
