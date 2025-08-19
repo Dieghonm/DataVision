@@ -14,6 +14,13 @@ def inicializar_session_state():
     if "categoria" not in st.session_state:
         st.session_state.categoria = "Pipeline"
 
+    if "data_source" not in st.session_state:
+        st.session_state.data_source = None
+    if "DF" not in st.session_state:
+        st.session_state.DF = None
+    # if "DF" not in st.session_state:
+    #     st.session_state.DF = None
+
 def main():
     st.title("DataVision EBAC SEMANTIX")
     st.markdown("---")

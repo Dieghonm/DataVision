@@ -6,9 +6,10 @@ from scripts.mainPage.pipeline import pipeline_main
 def render_main():
     categoria = st.session_state.categoria
 
-    if categoria == "Pipeline de Dados":
-        st.session_state.categoria = "Pipeline"
+    if categoria == "Pipeline":
         pipeline_main()
-    else:
-        st.session_state.categoria = "Modelo"
+    elif categoria == "Modelo":
         model_main()
+    else:
+        # Fallback para o caso de categoria não reconhecida
+        st.error("Categoria não reconhecida. Por favor, selecione uma opção válida.")

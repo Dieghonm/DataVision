@@ -13,7 +13,8 @@ def render_sidebar():
 
     if categoria == "Pipeline de Dados":
         st.session_state.categoria = "Pipeline"
-        pipeline_sidebar()
+        pipeline_config = pipeline_sidebar()
+        st.session_state.pipeline_config = pipeline_config
     else:
         st.session_state.categoria = "Modelo"
         model_sidebar()
