@@ -60,11 +60,6 @@ def model_page(params):
                     df_pred = pd.read_csv(arquivo_pred)
                 else:
                     df_pred = pd.read_excel(arquivo_pred)
-
-            # Mostrar dados carregados
-            st.success(f"✅ Arquivo carregado: {arquivo_pred.name}")
-            
-            col1, col2 = st.columns([2, 1])
             
             with col1:
                 st.write("### 📊 Dados enviados para predição:")

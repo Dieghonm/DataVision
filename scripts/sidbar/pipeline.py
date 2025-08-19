@@ -1,5 +1,5 @@
 import streamlit as st
-from zold.data_loader import load_dataset
+from scripts.data_loader import load_dataset
 
 class PipelineUI:
     def __init__(self):
@@ -160,11 +160,6 @@ class PipelineUI:
 
         # Recuperar dados da sessão
         self.current_data = st.session_state.get('current_data')
-
-        # Mostrar info do dataset se carregado
-        if self.current_data is not None:
-            st.sidebar.success(f"✅ {st.session_state.get('dataset_name', 'Dataset')} carregado")
-            st.sidebar.info(f"📊 Shape: {self.current_data.shape}")
 
         # 🤖 Modelo
         st.sidebar.subheader("🤖 Modelo")

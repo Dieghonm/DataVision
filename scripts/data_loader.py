@@ -75,6 +75,9 @@ def load_dataset(data_source, uploaded_file=None):
                 df = _generate_phone_addiction_data()
                 st.warning("⚠️ Arquivo original não encontrado. Usando dados sintéticos.")
             return df, "Teen Phone Addiction Dataset"
+        
+        elif data_source == "upload":
+            return None, None
 
         else:
             st.error(f"Fonte de dados '{data_source}' não reconhecida.")

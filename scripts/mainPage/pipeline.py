@@ -8,18 +8,13 @@ def pipeline_main():
 
     # df, nome_dataset = load_dataset(data_source, uploaded_file)
 
-    if st.session_state.DF is not None:
-        st.write("Modelo selecionado<-----")
-        # st.write(f"### {nome_dataset}")
-        # st.dataframe(df.head())
-        # st.write(f"Shape: {df.shape[0]} linhas × {df.shape[1]} colunas")
-        # st.write("### Estatísticas descritivas:")
-        # st.write(df.describe())
+    if st.session_state.pipeline_config["data_source"] != "upload":
+        st.write(f"### {st.session_state.pipeline_config["data_source"]}")
+        st.dataframe(df.head())
+        st.write(f"Shape: {df.shape[0]} linhas × {df.shape[1]} colunas")
+        st.write("### Estatísticas descritivas:")
+        st.write(df.describe())
 
-        # if etapas:
-            # st.success(f"Etapas selecionadas: {', '.join(etapas)}")
-        # else:
-            # st.info("Nenhuma etapa do pipeline foi selecionada.")
     else:
         _render_welcome()
 
