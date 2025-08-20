@@ -355,121 +355,316 @@ def _render_dataset_visualizations(df, data_source, nome_dataset):
 
 
 def _render_specific_visualizations(df, data_source, numeric_cols):
+    """
+    Renderiza visualizações específicas baseadas no dataset real carregado
+    """
     import plotly.express as px
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
+    import pandas as pd
+    
+    st.write(f"**Análises Específicas - {data_source}:**")
+    
+    # Verificar colunas disponíveis no dataset
+    available_cols = df.columns.tolist()
     
     if data_source == "Credit":
-        st.write("**Análises Específicas - Credit Scoring:**")
+        st.write("**Análise de Credit Scoring:**")
+        
+        # Detectar automaticamente colunas relevantes
+        age_cols = [col for col in available_cols if any(word in col.lower() for word in ['age', 'idade', 'anos'])]
+        income_cols = [col for col in available_cols if any(word in col.lower() for word in ['income', 'renda', 'salary', 'salario'])]
+        credit_cols = [col for col in available_cols if any(word in col.lower() for word in ['credit', 'score', 'credito'])]
+        amount_cols = [col for col in available_cols if any(word in col.lower() for word in ['amount', 'valor', 'loan', 'emprestimo'])]
         
         col1, col2 = st.columns(2)
         
         with col1:
-            if 'age' in df.columns:
+            # Idade
+            if age_cols:
+                age_col = age_cols[0]
+                fig = px.histogram(df, x=age_col, title=f"Distribuição de {age_col}", nbins=20)
+                st.plotly_chart(fig, use_container_width=True)
+            elif 'age' in df.columns:
                 fig = px.histogram(df, x='age', title="Distribuição de Idade", nbins=20)
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                # Usar primeira coluna numérica como proxy
+                if numeric_cols:
+                    fig = px.histogram(df, x=numeric_cols[0], title=f"Distribuição de {numeric_cols[0]}", nbins=20)
+                    st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            if 'income' in df.columns:
-                fig = px.histogram(df, x='income', title="Distribuição de Renda", nbins=20)
+            # Renda/Income
+            if income_cols:
+                income_col = income_cols[0]
+                fig = px.histogram(df, x=income_col, title=f"Distribuição de {income_col}", nbins=20)
+                st.plotly_chart(fig, use_container_width=True)
+            elif credit_cols:
+                credit_col = credit_cols[0]
+                fig = px.histogram(df, x=credit_col, title=f"Distribuição de {credit_col}", nbins=20)
+                st.plotly_chart(fig, use_container_width=True)
+            elif len(numeric_cols) > 1:
+                fig = px.histogram(df, x=numeric_cols[1], title=f"Distribuição de {numeric_cols[1]}", nbins=20)
                 st.plotly_chart(fig, use_container_width=True)
         
-        if 'age' in df.columns and 'target_name' in df.columns:
+        # Análise por faixa etária se tiver target
+        target_col = 'target_name' if 'target_name' in df.columns else 'target' if 'target' in df.columns else None
+        
+        if target_col and age_cols:
+            age_col = age_cols[0]
             df_viz = df.copy()
-            df_viz['age_group'] = pd.cut(df['age'], bins=[0, 25, 35, 45, 55, 100], 
-                                       labels=['18-25', '26-35', '36-45', '46-55', '55+'])
             
-            fig = px.histogram(df_viz, x='age_group', color='target_name', 
-                             title="Distribuição de Aprovação por Faixa Etária",
+            # Criar faixas etárias baseadas nos dados reais
+            age_min, age_max = df[age_col].min(), df[age_col].max()
+            if age_max - age_min > 50:
+                bins = [age_min, 25, 35, 45, 55, age_max]
+                labels = [f'{age_min}-25', '26-35', '36-45', '46-55', f'55-{age_max}']
+            else:
+                # Se range menor, criar bins automáticos
+                bins = pd.qcut(df[age_col], q=4, duplicates='drop').cat.categories
+                labels = [f'{int(interval.left)}-{int(interval.right)}' for interval in bins]
+                bins = pd.qcut(df[age_col], q=4, duplicates='drop')
+            
+            if isinstance(bins, list):
+                df_viz['age_group'] = pd.cut(df[age_col], bins=bins, labels=labels, include_lowest=True)
+            else:
+                df_viz['age_group'] = bins
+            
+            fig = px.histogram(df_viz, x='age_group', color=target_col, 
+                             title=f"Distribuição do Target por Faixa de {age_col}",
                              barmode='group')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Análise de correlação com variáveis numéricas relevantes
+        if len(numeric_cols) >= 2:
+            st.write("**Correlação entre Variáveis Principais:**")
+            
+            # Selecionar as 4 variáveis mais relevantes
+            relevant_cols = numeric_cols[:4] if len(numeric_cols) >= 4 else numeric_cols
+            
+            fig = px.scatter_matrix(df, dimensions=relevant_cols, 
+                                  color=target_col if target_col else None,
+                                  title="Matriz de Correlações - Principais Variáveis")
+            fig.update_layout(height=600)
             st.plotly_chart(fig, use_container_width=True)
     
     elif data_source == "Hipertension":
-        st.write("**Análises Específicas - Hipertensão:**")
+        st.write("**Análise de Hipertensão:**")
+        
+        # Detectar colunas relevantes
+        age_cols = [col for col in available_cols if any(word in col.lower() for word in ['age', 'idade'])]
+        bp_cols = [col for col in available_cols if any(word in col.lower() for word in ['bp', 'pressure', 'pressao', 'systolic', 'diastolic'])]
+        bmi_cols = [col for col in available_cols if any(word in col.lower() for word in ['bmi', 'weight', 'height', 'peso', 'altura'])]
+        gender_cols = [col for col in available_cols if any(word in col.lower() for word in ['gender', 'sex', 'genero', 'sexo'])]
         
         col1, col2 = st.columns(2)
         
         with col1:
-            if 'age' in df.columns:
-                fig = px.histogram(df, x='age', title="Distribuição de Idade", nbins=15)
+            # Idade
+            if age_cols:
+                age_col = age_cols[0]
+                fig = px.histogram(df, x=age_col, title=f"Distribuição de {age_col}", nbins=15)
+                st.plotly_chart(fig, use_container_width=True)
+            elif numeric_cols:
+                fig = px.histogram(df, x=numeric_cols[0], title=f"Distribuição de {numeric_cols[0]}", nbins=15)
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            if 'bmi' in df.columns:
-                fig = px.histogram(df, x='bmi', title="Distribuição de IMC", nbins=15)
+            # BMI ou segunda variável numérica
+            if bmi_cols:
+                bmi_col = bmi_cols[0]
+                fig = px.histogram(df, x=bmi_col, title=f"Distribuição de {bmi_col}", nbins=15)
+                st.plotly_chart(fig, use_container_width=True)
+            elif len(numeric_cols) > 1:
+                fig = px.histogram(df, x=numeric_cols[1], title=f"Distribuição de {numeric_cols[1]}", nbins=15)
                 st.plotly_chart(fig, use_container_width=True)
         
-        if 'systolic_bp' in df.columns and 'diastolic_bp' in df.columns and 'target_name' in df.columns:
-            fig = px.scatter(df, x='systolic_bp', y='diastolic_bp', color='target_name',
-                           title="Pressão Sistólica vs Diastólica por Diagnóstico")
+        # Scatter plot de pressão arterial se disponível
+        systolic_col = next((col for col in bp_cols if 'systolic' in col.lower() or 'sistolica' in col.lower()), None)
+        diastolic_col = next((col for col in bp_cols if 'diastolic' in col.lower() or 'diastolica' in col.lower()), None)
+        target_col = 'target_name' if 'target_name' in df.columns else 'target' if 'target' in df.columns else None
+        
+        if systolic_col and diastolic_col and target_col:
+            fig = px.scatter(df, x=systolic_col, y=diastolic_col, color=target_col,
+                           title=f"{systolic_col} vs {diastolic_col} por Diagnóstico")
+            st.plotly_chart(fig, use_container_width=True)
+        elif len(numeric_cols) >= 2:
+            fig = px.scatter(df, x=numeric_cols[0], y=numeric_cols[1], color=target_col,
+                           title=f"{numeric_cols[0]} vs {numeric_cols[1]} por Diagnóstico")
             st.plotly_chart(fig, use_container_width=True)
         
-        risk_factors = ['smoking', 'alcohol', 'exercise', 'family_history']
-        available_factors = [f for f in risk_factors if f in df.columns]
+        # Análise de fatores de risco (colunas binárias)
+        binary_cols = []
+        for col in available_cols:
+            if df[col].dtype in ['int64', 'float64'] and df[col].nunique() == 2:
+                unique_vals = sorted(df[col].unique())
+                if unique_vals == [0, 1] or unique_vals == [0.0, 1.0]:
+                    binary_cols.append(col)
         
-        if available_factors:
-            st.write("**Fatores de Risco:**")
-            factor_data = []
+        if binary_cols:
+            st.write("**Análise de Fatores de Risco (Variáveis Binárias):**")
             
-            for factor in available_factors:
-                if df[factor].dtype in ['int64', 'float64']:
-                    positive_rate = (df[factor] == 1).mean() * 100
-                    factor_data.append({'Fator': factor.replace('_', ' ').title(), 'Taxa (%)': positive_rate})
+            factor_data = []
+            for factor in binary_cols[:6]:  # Limitar a 6 fatores para não poluir
+                positive_rate = (df[factor] == 1).mean() * 100
+                factor_name = factor.replace('_', ' ').replace('-', ' ').title()
+                factor_data.append({'Fator': factor_name, 'Taxa (%)': positive_rate})
             
             if factor_data:
-                import pandas as pd
                 factor_df = pd.DataFrame(factor_data)
                 fig = px.bar(factor_df, x='Fator', y='Taxa (%)', 
                            title="Taxa de Fatores de Risco na População")
+                fig.update_xaxis(tickangle=45)
                 st.plotly_chart(fig, use_container_width=True)
     
     elif data_source == "Phone addiction":
-        st.write("**Análises Específicas - Vício em Smartphone:**")
+        st.write("**Análise de Vício em Smartphone:**")
+        
+        # Detectar colunas relevantes
+        usage_cols = [col for col in available_cols if any(word in col.lower() for word in ['usage', 'uso', 'hours', 'horas', 'time', 'tempo'])]
+        sleep_cols = [col for col in available_cols if any(word in col.lower() for word in ['sleep', 'sono'])]
+        age_cols = [col for col in available_cols if any(word in col.lower() for word in ['age', 'idade'])]
+        social_cols = [col for col in available_cols if any(word in col.lower() for word in ['social', 'apps', 'media'])]
         
         col1, col2 = st.columns(2)
         
         with col1:
-            if 'daily_usage_hours' in df.columns:
-                fig = px.histogram(df, x='daily_usage_hours', title="Horas de Uso Diário", nbins=15)
+            # Uso diário
+            if usage_cols:
+                usage_col = usage_cols[0]
+                fig = px.histogram(df, x=usage_col, title=f"Distribuição de {usage_col}", nbins=15)
+                st.plotly_chart(fig, use_container_width=True)
+            elif numeric_cols:
+                fig = px.histogram(df, x=numeric_cols[0], title=f"Distribuição de {numeric_cols[0]}", nbins=15)
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            if 'sleep_hours' in df.columns:
-                fig = px.histogram(df, x='sleep_hours', title="Horas de Sono", nbins=10)
+            # Sono
+            if sleep_cols:
+                sleep_col = sleep_cols[0]
+                fig = px.histogram(df, x=sleep_col, title=f"Distribuição de {sleep_col}", nbins=10)
+                st.plotly_chart(fig, use_container_width=True)
+            elif len(numeric_cols) > 1:
+                fig = px.histogram(df, x=numeric_cols[1], title=f"Distribuição de {numeric_cols[1]}", nbins=10)
                 st.plotly_chart(fig, use_container_width=True)
         
-        if 'daily_usage_hours' in df.columns and 'sleep_hours' in df.columns:
-            color_col = 'target_name' if 'target_name' in df.columns else None
-            fig = px.scatter(df, x='daily_usage_hours', y='sleep_hours', color=color_col,
-                           title="Relação entre Uso Diário e Horas de Sono")
+        # Correlação uso vs sono
+        target_col = 'target_name' if 'target_name' in df.columns else 'target' if 'target' in df.columns else None
+        
+        if usage_cols and sleep_cols:
+            usage_col, sleep_col = usage_cols[0], sleep_cols[0]
+            fig = px.scatter(df, x=usage_col, y=sleep_col, color=target_col,
+                           title=f"Relação entre {usage_col} e {sleep_col}")
+            st.plotly_chart(fig, use_container_width=True)
+        elif len(numeric_cols) >= 2:
+            fig = px.scatter(df, x=numeric_cols[0], y=numeric_cols[1], color=target_col,
+                           title=f"Relação entre {numeric_cols[0]} e {numeric_cols[1]}")
             st.plotly_chart(fig, use_container_width=True)
         
-        if 'age' in df.columns and 'daily_usage_hours' in df.columns:
-            fig = px.box(df, x='age', y='daily_usage_hours', 
-                        title="Uso Diário por Idade")
+        # Análise por idade se disponível
+        if age_cols and usage_cols:
+            age_col, usage_col = age_cols[0], usage_cols[0]
+            fig = px.box(df, x=age_col, y=usage_col, 
+                        title=f"{usage_col} por {age_col}")
+            st.plotly_chart(fig, use_container_width=True)
+        elif age_cols and numeric_cols:
+            age_col = age_cols[0]
+            fig = px.box(df, x=age_col, y=numeric_cols[0], 
+                        title=f"{numeric_cols[0]} por {age_col}")
             st.plotly_chart(fig, use_container_width=True)
     
     else:
-        st.write(f"**Análises Específicas - {data_source.title()}:**")
+        # Para datasets genéricos ou desconhecidos
+        st.write(f"**Análises Gerais - {data_source.title()}:**")
         
+        target_col = 'target_name' if 'target_name' in df.columns else 'target' if 'target' in df.columns else None
+        
+        # Scatter plot das duas primeiras variáveis numéricas
         if len(numeric_cols) >= 2:
-            color_col = 'target_name' if 'target_name' in df.columns else 'target' if 'target' in df.columns else None
-            
-            fig = px.scatter(df, x=numeric_cols[0], y=numeric_cols[1], color=color_col,
+            fig = px.scatter(df, x=numeric_cols[0], y=numeric_cols[1], color=target_col,
                            title=f"{numeric_cols[0]} vs {numeric_cols[1]}")
             st.plotly_chart(fig, use_container_width=True)
         
+        # Matriz de scatter plots se dataset não for muito grande
         if len(df) < 1000 and len(numeric_cols) <= 6:
             st.write("**Matriz de Scatter Plots:**")
             
             plot_vars = numeric_cols[:4] if len(numeric_cols) > 4 else numeric_cols
             
             if len(plot_vars) >= 2:
-                fig = px.scatter_matrix(df, dimensions=plot_vars, 
-                                      color='target_name' if 'target_name' in df.columns else None,
-                                      title="Matriz de Correlações")
-                fig.update_layout(height=600)
-                st.plotly_chart(fig, use_container_width=True)
+                try:
+                    fig = px.scatter_matrix(df, dimensions=plot_vars, 
+                                          color=target_col,
+                                          title="Matriz de Correlações")
+                    fig.update_layout(height=600)
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Não foi possível gerar a matriz de scatter plots: {str(e)}")
+        
+        # Análise das variáveis categóricas se houver
+        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+        if 'target_name' in categorical_cols:
+            categorical_cols.remove('target_name')
+        if 'target' in categorical_cols:
+            categorical_cols.remove('target')
+        
+        if categorical_cols and target_col:
+            st.write("**Análise de Variáveis Categóricas:**")
+            
+            # Mostrar apenas as primeiras 3 variáveis categóricas
+            for cat_col in categorical_cols[:3]:
+                if df[cat_col].nunique() <= 10:  # Só mostrar se não tiver muitas categorias
+                    fig = px.histogram(df, x=cat_col, color=target_col,
+                                     title=f"Distribuição de {cat_col} por Target",
+                                     barmode='group')
+                    fig.update_xaxis(tickangle=45)
+                    st.plotly_chart(fig, use_container_width=True)
+    
+    # Informações adicionais sobre o dataset
+    st.markdown("---")
+    st.write("**Informações do Dataset:**")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Total de Colunas", len(df.columns))
+        st.metric("Colunas Numéricas", len(numeric_cols))
+    
+    with col2:
+        categorical_count = len(df.select_dtypes(include=['object', 'category']).columns)
+        st.metric("Colunas Categóricas", categorical_count)
+        missing_percent = (df.isnull().sum().sum() / (df.shape[0] * df.shape[1])) * 100
+        st.metric("% Dados Faltantes", f"{missing_percent:.1f}%")
+    
+    with col3:
+        memory_usage = df.memory_usage(deep=True).sum() / 1024 / 1024  # MB
+        st.metric("Uso de Memória", f"{memory_usage:.1f} MB")
+        
+        if target_col:
+            balance_ratio = df[target_col].value_counts().min() / df[target_col].value_counts().max()
+            st.metric("Balanceamento", f"{balance_ratio:.2f}")
+    
+    # Lista das colunas disponíveis para debug
+    with st.expander("🔍 Colunas Disponíveis no Dataset (Debug)"):
+        st.write("**Todas as colunas:**")
+        cols_info = []
+        for col in df.columns:
+            dtype = str(df[col].dtype)
+            unique_count = df[col].nunique()
+            missing_count = df[col].isnull().sum()
+            cols_info.append({
+                'Coluna': col,
+                'Tipo': dtype,
+                'Valores Únicos': unique_count,
+                'Faltantes': missing_count
+            })
+        
+        cols_df = pd.DataFrame(cols_info)
+        st.dataframe(cols_df, use_container_width=True)
+        
+        st.write("**Primeiras linhas para referência:**")
+        st.dataframe(df.head(3), use_container_width=True)
 
 
 def _render_welcome():

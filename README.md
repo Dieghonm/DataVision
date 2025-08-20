@@ -71,7 +71,7 @@ Uma aplicação web interativa construída com Streamlit para [descreva brevemen
 ## 📁 Estrutura do Projeto
 
 ```
-meu-app-streamlit/
+DATAVISION/
 │
 ├── src/                    # Código fonte
 │   ├── app.py             # Arquivo principal
