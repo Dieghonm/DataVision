@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.datasets import load_iris, load_wine, load_breast_cancer
 import streamlit as st
 import os
+import io
 
 def load_dataset(data_source, uploaded_file=None):
     """
@@ -16,8 +17,58 @@ def load_dataset(data_source, uploaded_file=None):
     """
     try:
         if data_source == "upload" and uploaded_file is not None:
-            df = pd.read_csv(uploaded_file)
-            return df, f"Dataset Personalizado ({uploaded_file.name})"
+            # Melhor tratamento para upload de arquivos
+            try:
+                # Ler o arquivo como string primeiro para detectar problemas
+                if hasattr(uploaded_file, 'read'):
+                    # Reset do ponteiro do arquivo
+                    uploaded_file.seek(0)
+                    
+                    # Detectar encoding
+                    sample = uploaded_file.read(10000)
+                    uploaded_file.seek(0)
+                    
+                    # Tentar diferentes encodings
+                    encodings_to_try = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+                    df = None
+                    
+                    for encoding in encodings_to_try:
+                        try:
+                            uploaded_file.seek(0)
+                            df = pd.read_csv(uploaded_file, encoding=encoding)
+                            st.info(f"Arquivo carregado com encoding: {encoding}")
+                            break
+                        except (UnicodeDecodeError, pd.errors.ParserError):
+                            continue
+                    
+                    if df is None:
+                        # Última tentativa com parâmetros mais flexíveis
+                        uploaded_file.seek(0)
+                        df = pd.read_csv(
+                            uploaded_file, 
+                            encoding='utf-8',
+                            sep=None,  # Detectar separador automaticamente
+                            engine='python',
+                            encoding_errors='replace'
+                        )
+                    
+                    # Validações do dataset
+                    if df.empty:
+                        st.error("O arquivo CSV está vazio.")
+                        return None, None
+                    
+                    # Limpar nomes das colunas (remover espaços)
+                    df.columns = df.columns.str.strip()
+                    
+                    # Se há uma coluna que pode ser target, criar target padrão
+                    _ensure_target_column(df)
+                    
+                    return df, f"Dataset Personalizado ({uploaded_file.name})"
+                
+            except Exception as e:
+                st.error(f"Erro ao processar arquivo CSV: {str(e)}")
+                st.error("Verifique se o arquivo está no formato CSV correto.")
+                return None, None
 
         elif data_source == "iris":
             data = load_iris()
@@ -46,106 +97,22 @@ def load_dataset(data_source, uploaded_file=None):
             return df, "Breast Cancer Dataset"
 
         elif data_source == "Credit":
-            # Tentar carregar o arquivo real primeiro
             file_path = "data/raw/credit_scoring.ftr"
-            if os.path.exists(file_path):
-                try:
-                    df = pd.read_feather(file_path)
-                    # Garantir que existe uma coluna target
-                    if 'target' not in df.columns:
-                        # Procurar por colunas que possam ser target
-                        possible_targets = ['approved', 'default', 'risk', 'loan_status', 'result']
-                        for col in possible_targets:
-                            if col in df.columns:
-                                df['target'] = df[col]
-                                break
-                    
-                    # Criar target_name se não existir
-                    if 'target_name' not in df.columns and 'target' in df.columns:
-                        unique_targets = df['target'].unique()
-                        if len(unique_targets) == 2:
-                            # Binário - assumir 0=Negado, 1=Aprovado
-                            df['target_name'] = df['target'].map({0: 'Denied', 1: 'Approved'})
-                        else:
-                            df['target_name'] = df['target'].astype(str)
-                    
-                    return df, "Credit Scoring Dataset"
-                except Exception as e:
-                    st.warning(f"⚠️ Erro ao ler arquivo {file_path}: {str(e)}. Usando dados sintéticos.")
-            else:
-                st.warning(f"⚠️ Arquivo {file_path} não encontrado. Usando dados sintéticos.")
-            
-            # Se não conseguiu carregar, gerar dados sintéticos
-            df = _generate_credit_data()
-            return df, "Credit Scoring Dataset (Sintético)"
+            df = pd.read_feather(file_path)
+            _ensure_target_column(df)
+            return df, "Credit Scoring Dataset"
 
         elif data_source == "Hipertension":
             file_path = "data/raw/hypertension_dataset.csv"
-            if os.path.exists(file_path):
-                try:
-                    df = pd.read_csv(file_path)
-                    
-                    # Garantir que existe uma coluna target
-                    if 'target' not in df.columns:
-                        # Procurar por colunas que possam ser target
-                        possible_targets = ['hypertension', 'bp_status', 'diagnosis', 'result', 'class']
-                        for col in possible_targets:
-                            if col in df.columns:
-                                df['target'] = df[col]
-                                break
-                    
-                    # Criar target_name se não existir
-                    if 'target_name' not in df.columns and 'target' in df.columns:
-                        unique_targets = df['target'].unique()
-                        if len(unique_targets) == 2:
-                            # Binário - assumir 0=Normal, 1=Hipertensivo
-                            df['target_name'] = df['target'].map({0: 'Normal', 1: 'Hypertensive'})
-                        else:
-                            df['target_name'] = df['target'].astype(str)
-                    
-                    return df, "Hypertension Dataset"
-                except Exception as e:
-                    st.warning(f"⚠️ Erro ao ler arquivo {file_path}: {str(e)}. Usando dados sintéticos.")
-            else:
-                st.warning(f"⚠️ Arquivo {file_path} não encontrado. Usando dados sintéticos.")
-            
-            # Se não conseguiu carregar, gerar dados sintéticos
-            df = _generate_hypertension_data()
-            return df, "Hypertension Dataset (Sintético)"
+            df = pd.read_csv(file_path)
+            _ensure_target_column(df)
+            return df, "Hypertension Dataset"
 
         elif data_source == "Phone addiction":
             file_path = "data/raw/teen_phone_addiction_dataset.csv"
-            if os.path.exists(file_path):
-                try:
-                    df = pd.read_csv(file_path)
-                    
-                    # Garantir que existe uma coluna target
-                    if 'target' not in df.columns:
-                        # Procurar por colunas que possam ser target
-                        possible_targets = ['addiction', 'addicted', 'phone_addiction', 'result', 'class', 'status']
-                        for col in possible_targets:
-                            if col in df.columns:
-                                df['target'] = df[col]
-                                break
-                    
-                    # Criar target_name se não existir
-                    if 'target_name' not in df.columns and 'target' in df.columns:
-                        unique_targets = df['target'].unique()
-                        if len(unique_targets) == 2:
-                            # Binário - assumir 0=Normal, 1=Viciado
-                            df['target_name'] = df['target'].map({0: 'Normal', 1: 'Addicted'})
-                        else:
-                            df['target_name'] = df['target'].astype(str)
-                    
-                    return df, "Teen Phone Addiction Dataset"
-                except Exception as e:
-                    st.warning(f"⚠️ Erro ao ler arquivo {file_path}: {str(e)}. Usando dados sintéticos.")
-            else:
-                st.warning(f"⚠️ Arquivo {file_path} não encontrado. Usando dados sintéticos.")
-            
-            # Se não conseguiu carregar, gerar dados sintéticos
-            df = _generate_phone_addiction_data()
-            return df, "Teen Phone Addiction Dataset (Sintético)"
+            df = pd.read_csv(file_path)
+            _ensure_target_column(df)
+            return df, "Teen Phone Addiction Dataset"
         
         elif data_source == "upload":
             return None, None
@@ -162,123 +129,102 @@ def load_dataset(data_source, uploaded_file=None):
         return None, None
     except pd.errors.ParserError as e:
         st.error(f"Erro ao analisar o arquivo: {str(e)}")
+        st.error("Dica: Verifique se o separador do CSV está correto (vírgula, ponto-e-vírgula, tab)")
+        return None, None
+    except UnicodeDecodeError as e:
+        st.error(f"Erro de encoding do arquivo: {str(e)}")
+        st.error("Dica: Tente salvar o arquivo com encoding UTF-8")
         return None, None
     except Exception as e:
         st.error(f"Erro inesperado ao carregar dataset: {str(e)}")
+        st.error("Verifique se o arquivo está no formato correto.")
         return None, None
 
 
-def _generate_credit_data():
-    """Gera dados sintéticos para credit scoring"""
-    import numpy as np
+def _ensure_target_column(df):
+    """
+    Garante que o DataFrame tenha uma coluna target adequada
+    """
+    if 'target' not in df.columns:
+        # Procurar por colunas que possam ser target
+        possible_targets = ['Class', 'class', 'label', 'Label', 'y', 'Y', 
+                          'outcome', 'result', 'diagnosis', 'approved', 
+                          'default', 'risk', 'loan_status', 'hypertension',
+                          'bp_status', 'addiction', 'addicted', 'phone_addiction',
+                          'target_class', 'classification', 'category']
+        
+        for col in possible_targets:
+            if col in df.columns:
+                df['target'] = df[col]
+                break
+        
+        # Se ainda não tem target, usar a última coluna
+        if 'target' not in df.columns:
+            last_col = df.columns[-1]
+            # Verificar se a última coluna pode ser um target (poucos valores únicos)
+            if df[last_col].nunique() <= 10:
+                df['target'] = df[last_col]
     
-    n_samples = 1000
-    np.random.seed(42)
-    
-    data = {
-        'age': np.random.randint(18, 80, n_samples),
-        'income': np.random.normal(50000, 20000, n_samples),
-        'credit_score': np.random.randint(300, 850, n_samples),
-        'debt_to_income': np.random.uniform(0, 1, n_samples),
-        'employment_length': np.random.randint(0, 30, n_samples),
-        'loan_amount': np.random.normal(15000, 10000, n_samples),
-    }
-    
-    # Target baseado em lógica simplificada
-    target = []
-    for i in range(n_samples):
-        score = (
-            (data['credit_score'][i] / 850) * 0.4 +
-            (min(data['income'][i], 100000) / 100000) * 0.3 +
-            (1 - data['debt_to_income'][i]) * 0.2 +
-            (min(data['employment_length'][i], 10) / 10) * 0.1
-        )
-        target.append(1 if score > 0.6 else 0)
-    
-    data['target'] = target
-    data['target_name'] = ['Approved' if t else 'Denied' for t in target]
-    
-    return pd.DataFrame(data)
-
-
-def _generate_hypertension_data():
-    """Gera dados sintéticos para hipertensão"""
-    import numpy as np
-    
-    n_samples = 800
-    np.random.seed(42)
-    
-    data = {
-        'age': np.random.randint(20, 80, n_samples),
-        'gender': np.random.choice([0, 1], n_samples),  # 0: F, 1: M
-        'bmi': np.random.normal(26, 5, n_samples),
-        'smoking': np.random.choice([0, 1], n_samples),
-        'alcohol': np.random.choice([0, 1], n_samples),
-        'exercise': np.random.choice([0, 1], n_samples),
-        'salt_intake': np.random.uniform(1, 10, n_samples),
-        'family_history': np.random.choice([0, 1], n_samples),
-        'systolic_bp': np.random.normal(125, 20, n_samples),
-        'diastolic_bp': np.random.normal(80, 15, n_samples),
-    }
-    
-    # Target baseado em fatores de risco
-    target = []
-    for i in range(n_samples):
-        risk_score = (
-            (data['age'][i] > 50) * 0.2 +
-            (data['bmi'][i] > 30) * 0.2 +
-            data['smoking'][i] * 0.15 +
-            data['family_history'][i] * 0.15 +
-            (data['salt_intake'][i] > 7) * 0.1 +
-            (not data['exercise'][i]) * 0.1 +
-            (data['systolic_bp'][i] > 140 or data['diastolic_bp'][i] > 90) * 0.3
-        )
-        target.append(1 if risk_score > 0.5 else 0)
-    
-    data['target'] = target
-    data['target_name'] = ['Hypertensive' if t else 'Normal' for t in target]
-    
-    return pd.DataFrame(data)
-
-
-def _generate_phone_addiction_data():
-    """Gera dados sintéticos para vício em telefone"""
-    import numpy as np
-    
-    n_samples = 600
-    np.random.seed(42)
-    
-    data = {
-        'age': np.random.randint(13, 19, n_samples),
-        'gender': np.random.choice([0, 1], n_samples),
-        'daily_usage_hours': np.random.gamma(3, 2, n_samples),  # Horas por dia
-        'social_media_apps': np.random.randint(1, 15, n_samples),
-        'notifications_per_day': np.random.poisson(50, n_samples),
-        'sleep_hours': np.random.normal(7, 1.5, n_samples),
-        'academic_performance': np.random.randint(1, 5, n_samples),  # 1-5 scale
-        'social_interaction_score': np.random.randint(1, 10, n_samples),
-        'anxiety_level': np.random.randint(1, 10, n_samples),
-        'physical_activity_hours': np.random.gamma(1, 2, n_samples),
-    }
-    
-    # Target baseado em padrões de uso problemático
-    target = []
-    for i in range(n_samples):
-        addiction_score = (
-            (data['daily_usage_hours'][i] > 6) * 0.25 +
-            (data['notifications_per_day'][i] > 100) * 0.2 +
-            (data['sleep_hours'][i] < 6) * 0.15 +
-            (data['academic_performance'][i] < 3) * 0.15 +
-            (data['social_interaction_score'][i] < 5) * 0.1 +
-            (data['anxiety_level'][i] > 7) * 0.1 +
-            (data['physical_activity_hours'][i] < 1) * 0.05
-        )
-        target.append(1 if addiction_score > 0.6 else 0)
-    
-    data['target'] = target
-    data['target_name'] = ['Addicted' if t else 'Normal' for t in target]
-    
-    return pd.DataFrame(data)
+    # Criar target_name se não existir
+    if 'target_name' not in df.columns and 'target' in df.columns:
+        unique_targets = df['target'].unique()
+        
+        # Se é numérico com poucos valores, criar mapeamento
+        if df['target'].dtype in ['int64', 'float64'] and len(unique_targets) <= 10:
+            if len(unique_targets) == 2:
+                # Binário - tentar inferir o significado baseado no dataset
+                min_val, max_val = sorted(unique_targets)
+                
+                # Mapeamentos específicos por contexto
+                if any(col in df.columns for col in ['credit_score', 'income', 'loan']):
+                    # Context: Credit scoring
+                    df['target_name'] = df['target'].map({
+                        min_val: 'Denied', 
+                        max_val: 'Approved'
+                    })
+                elif any(col in df.columns for col in ['bp', 'blood_pressure', 'hypertension']):
+                    # Context: Hypertension
+                    df['target_name'] = df['target'].map({
+                        min_val: 'Normal', 
+                        max_val: 'Hypertensive'
+                    })
+                elif any(col in df.columns for col in ['phone', 'usage', 'addiction']):
+                    # Context: Phone addiction
+                    df['target_name'] = df['target'].map({
+                        min_val: 'Normal', 
+                        max_val: 'Addicted'
+                    })
+                else:
+                    # Generic binary
+                    df['target_name'] = df['target'].map({
+                        min_val: f'Class_{min_val}', 
+                        max_val: f'Class_{max_val}'
+                    })
+                    
+            elif len(unique_targets) == 3:
+                # 3 classes - verificar se é diabetes ou genérico
+                sorted_targets = sorted(unique_targets)
+                
+                if any(col.lower() in ['glucose', 'hba1c', 'diabetes', 'blood_sugar'] for col in df.columns):
+                    # Context: Diabetes
+                    diabetes_mapping = {
+                        sorted_targets[0]: 'Normal',
+                        sorted_targets[1]: 'Pre-Diabetes', 
+                        sorted_targets[2]: 'Diabetes'
+                    }
+                    df['target_name'] = df['target'].map(diabetes_mapping)
+                else:
+                    # Generic 3-class
+                    df['target_name'] = df['target'].map({
+                        val: f'Class_{val}' for val in sorted_targets
+                    })
+                    
+            else:
+                # Mais classes - usar números
+                df['target_name'] = df['target'].astype(str)
+        else:
+            # Se já é string/object, usar como está
+            df['target_name'] = df['target'].astype(str)
 
 
 def validate_dataset(df):
@@ -306,3 +252,96 @@ def validate_dataset(df):
         return False, "Dataset tem mais de 50% de valores faltantes"
     
     return True, "Dataset válido"
+
+
+def preview_csv_content(uploaded_file):
+    """
+    Função para preview do conteúdo do CSV antes do carregamento completo
+    """
+    if uploaded_file is not None:
+        try:
+            uploaded_file.seek(0)
+            # Ler apenas as primeiras linhas para preview
+            sample_lines = []
+            for i, line in enumerate(uploaded_file):
+                if i >= 5:  # Apenas 5 linhas
+                    break
+                if isinstance(line, bytes):
+                    line = line.decode('utf-8', errors='replace')
+                sample_lines.append(line.strip())
+            
+            uploaded_file.seek(0)  # Reset para uso posterior
+            return sample_lines
+            
+        except Exception as e:
+            return [f"Erro ao ler preview: {str(e)}"]
+    return []
+
+
+def check_data_files():
+    """
+    Verifica quais arquivos de dados estão disponíveis na pasta data/raw/
+    
+    Returns:
+        dict: Status de cada arquivo esperado
+    """
+    expected_files = {
+        'credit_scoring.ftr': 'Credit Scoring Dataset',
+        'hypertension_dataset.csv': 'Hypertension Dataset', 
+        'teen_phone_addiction_dataset.csv': 'Teen Phone Addiction Dataset'
+    }
+    
+    status = {}
+    
+    for filename, description in expected_files.items():
+        filepath = f"data/raw/{filename}"
+        
+        if os.path.exists(filepath):
+            if filename.endswith('.ftr'):
+                df = pd.read_feather(filepath)
+            else:
+                df = pd.read_csv(filepath, nrows=5)
+            
+            status[filename] = {
+                'exists': True,
+                'readable': True,
+                'description': description,
+                'rows': len(df) if filename.endswith('.ftr') else 'N/A (CSV)',
+                'columns': len(df.columns),
+                'size_mb': round(os.path.getsize(filepath) / (1024*1024), 2)
+            }
+        else:
+            status[filename] = {
+                'exists': False,
+                'readable': False,
+                'description': description
+            }
+    
+    return status
+
+
+def display_data_status():
+    """
+    Exibe o status dos arquivos de dados na interface do Streamlit
+    """
+    st.subheader("Status dos Datasets")
+    
+    status = check_data_files()
+    
+    for filename, info in status.items():
+        with st.expander(f"{info['description']} ({filename})"):
+            if info['exists'] and info['readable']:
+                st.success("Arquivo disponível e legível")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if 'rows' in info and info['rows'] != 'N/A (CSV)':
+                        st.metric("Linhas", info['rows'])
+                with col2:
+                    st.metric("Colunas", info['columns'])
+                with col3:
+                    st.metric("Tamanho", f"{info['size_mb']} MB")
+                    
+            else:
+                st.warning("Arquivo não encontrado")
+                st.info(f"Coloque o arquivo em: data/raw/{filename}")
