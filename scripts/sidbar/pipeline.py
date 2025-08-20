@@ -7,7 +7,6 @@ class PipelineUI:
         self._init_session_state()
 
     def _init_session_state(self):
-        """Inicializa o estado da sessão"""
         if 'current_data' not in st.session_state:
             st.session_state.current_data = None
         if 'dataset_name' not in st.session_state:
@@ -18,7 +17,6 @@ class PipelineUI:
             st.session_state.last_uploaded_file = None
 
     def _load_dataset(self, data_source, uploaded_file=None):
-        """Carrega um dataset"""
         try:
             df, name = load_dataset(data_source, uploaded_file)
             return df, name
@@ -27,9 +25,8 @@ class PipelineUI:
             return None, None
 
     def _render_algorithm_params(self, algorithm):
-        """Renderiza parâmetros específicos do algoritmo"""
         st.sidebar.markdown("---")
-        st.sidebar.subheader("🔧 Parâmetros do Algoritmo")
+        st.sidebar.subheader("Parâmetros do Algoritmo")
         
         if algorithm == "random_forest":
             n_estimators = st.sidebar.slider(
@@ -73,15 +70,12 @@ class PipelineUI:
         return {}
 
     def _execute_pipeline(self, config):
-        """Executa o pipeline com as configurações fornecidas"""
         try:
-            st.success("🚀 Pipeline iniciado!")
+            st.success("Pipeline iniciado!")
             
-            # Criar uma barra de progresso
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            # Simular etapas do pipeline
             steps = [
                 "Carregando dados...",
                 "Preprocessando dados...",
@@ -94,14 +88,12 @@ class PipelineUI:
             for i, step in enumerate(steps):
                 status_text.text(step)
                 progress_bar.progress((i + 1) / len(steps))
-                # Simular tempo de processamento
                 import time
                 time.sleep(0.5)
             
-            status_text.text("✅ Pipeline concluído!")
+            status_text.text("Pipeline concluído!")
             
-            # Mostrar configuração utilizada
-            with st.expander("📋 Configuração Utilizada"):
+            with st.expander("Configuração Utilizada"):
                 col1, col2 = st.columns(2)
                 with col1:
                     st.json({
@@ -117,17 +109,15 @@ class PipelineUI:
                         "steps": config["steps"]
                     })
             
-            st.info("⚠️ Esta é uma simulação. Conecte as funções reais do pipeline aqui.")
+            st.info("Esta é uma simulação. Conecte as funções reais do pipeline aqui.")
             
         except Exception as e:
             st.error(f"Erro na execução do pipeline: {str(e)}")
 
     def render_pipeline(self):
-        """Renderiza a sidebar do pipeline UI"""
-        st.sidebar.title("⚙️ Configurações do Pipeline")
+        st.sidebar.title("Configurações do Pipeline")
 
-        # 📂 Fonte dos dados
-        st.sidebar.subheader("📂 Dados")
+        st.sidebar.subheader("Dados")
         data_source = st.sidebar.selectbox(
             "Fonte de dados:",
             ["upload", "iris", "wine", "breast_cancer", "Credit", "Hipertension", "Phone addiction"],
@@ -144,7 +134,6 @@ class PipelineUI:
                 key="file_upload"
             )
 
-        # Verificar se precisa recarregar os dados
         data_changed = (
             data_source != st.session_state.get('last_data_source') or
             uploaded_file != st.session_state.get('last_uploaded_file')
@@ -158,11 +147,9 @@ class PipelineUI:
                 st.session_state.last_data_source = data_source
                 st.session_state.last_uploaded_file = uploaded_file
 
-        # Recuperar dados da sessão
         self.current_data = st.session_state.get('current_data')
 
-        # 🤖 Modelo
-        st.sidebar.subheader("🤖 Modelo")
+        st.sidebar.subheader("Modelo")
         algorithm = st.sidebar.selectbox(
             "Algoritmo:",
             ["random_forest", "logistic_regression", "svm"],
@@ -171,8 +158,7 @@ class PipelineUI:
 
         algo_params = self._render_algorithm_params(algorithm)
 
-        # 📊 Avaliação
-        st.sidebar.subheader("📊 Avaliação")
+        st.sidebar.subheader("Avaliação")
         test_size = st.sidebar.slider(
             "Tamanho do teste:", 
             min_value=0.1, max_value=0.5, value=0.2, step=0.05,
@@ -191,8 +177,7 @@ class PipelineUI:
             help="Métricas de avaliação do modelo"
         )
 
-        # 🔧 Pipeline
-        st.sidebar.subheader("🔧 Pipeline")
+        st.sidebar.subheader("Pipeline")
         steps = st.sidebar.multiselect(
             "Etapas:",
             ["load_data", "preprocess_data", "train_model", "evaluate_model", "save_results"],
@@ -200,8 +185,7 @@ class PipelineUI:
             help="Etapas do pipeline a serem executadas"
         )
 
-        # ⚙️ Configurações Avançadas
-        with st.sidebar.expander("⚙️ Configurações Avançadas"):
+        with st.sidebar.expander("Configurações Avançadas"):
             scaling = st.selectbox(
                 "Normalização:", 
                 ["standard", "minmax", "robust", "none"],
@@ -213,10 +197,9 @@ class PipelineUI:
                 help="Semente para reprodutibilidade"
             )
 
-        # 🚀 Executar Pipeline
         st.sidebar.markdown("---")
         if self.current_data is not None:
-            if st.sidebar.button("🚀 Executar Pipeline", type="primary", use_container_width=True):
+            if st.sidebar.button("Executar Pipeline", type="primary", use_container_width=True):
                 config = {
                     "data_source": data_source,
                     "uploaded_file": uploaded_file,
@@ -231,7 +214,7 @@ class PipelineUI:
                 }
                 self._execute_pipeline(config)
         else:
-            st.sidebar.warning("👆 Selecione um dataset para continuar")
+            st.sidebar.warning("Selecione um dataset para continuar")
 
         return {
             "data_source": data_source,
@@ -247,6 +230,5 @@ class PipelineUI:
         }
 
 def pipeline_sidebar():
-    """Função principal para renderizar o sidebar do pipeline"""
     pipeline_ui = PipelineUI()
     return pipeline_ui.render_pipeline()

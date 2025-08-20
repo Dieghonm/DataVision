@@ -11,5 +11,4 @@ def render_main():
     elif categoria == "Modelo":
         model_main()
     else:
-        # Fallback para o caso de categoria não reconhecida
         st.error("Categoria não reconhecida. Por favor, selecione uma opção válida.")

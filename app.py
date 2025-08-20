@@ -9,7 +9,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inicialização do estado da sessão
 def inicializar_session_state():
     if "categoria" not in st.session_state:
         st.session_state.categoria = "Pipeline"
@@ -27,8 +26,5 @@ def main():
     render_sidebar()
     render_main()
 
-
 if __name__ == "__main__":
     main()
-
-

@@ -5,7 +5,7 @@ from scripts.sidbar.pipeline import pipeline_sidebar
 
 def render_sidebar():
     categoria = st.sidebar.radio(
-        "⚙️ Escolha a Operação:",
+        "Escolha a Operação:",
         ["Pipeline de Dados", "Utilizar Modelo Salvo"]
     )
 
