@@ -213,6 +213,7 @@ class PipelineUI:
                     "random_state": random_state
                 }
                 self._execute_pipeline(config)
+                st.session_state.categoria = "Model_Run"
         else:
             st.sidebar.warning("Selecione um dataset para continuar")
 
