@@ -26,8 +26,8 @@ def pipeline_main():
             tab1, tab2, tab3 = st.tabs(["Prévia dos Dados", "Estatísticas", "Informações Gerais"])
             
             with tab1:
-                st.write("**Primeiras 10 linhas:**")
-                st.dataframe(df.head(10), use_container_width=True)
+                st.write("**Primeiras 5 linhas:**")
+                st.dataframe(df.head(5), use_container_width=True)
             
             with tab2:
                 st.write("**Estatísticas descritivas:**")
