@@ -170,11 +170,9 @@ class MLPipeline:
         if target_column == 'target_name' and 'target' in data.columns:
             target_column = 'target'
         
-        # CORREÇÃO: Verificar se target_column existe
         if target_column not in data.columns:
             raise ValueError(f"Coluna target '{target_column}' não encontrada")
         
-        # Filtrar valores nulos do target antes de calcular distribuição
         target_data = data[target_column].dropna()
         
         if len(target_data) == 0:
@@ -223,7 +221,6 @@ class MLPipeline:
         analysis = pipeline_data.get('data_analysis', {})
         target_column = analysis.get('target_column')
         
-        # CORREÇÃO ADICIONAL: Verificar e tratar colunas problemáticas
         data = self._handle_problematic_columns(data, target_column)
         
         if 'target_name' in data.columns and 'target' in data.columns:
@@ -252,28 +249,22 @@ class MLPipeline:
             if col == target_column:
                 continue
                 
-            # 1. Verificar colunas datetime que não foram tratadas
             if data_cleaned[col].dtype == 'datetime64[ns]':
                 try:
-                    # Converter datetime em timestamp numérico
-                    data_cleaned[col] = data_cleaned[col].astype('int64') // 10**9  # Converter para seconds
+                    data_cleaned[col] = data_cleaned[col].astype('int64') // 10**9 
                     st.info(f"Coluna datetime '{col}' convertida para timestamp")
                 except:
                     columns_to_drop.append(col)
                     st.warning(f"Coluna datetime '{col}' será removida (não pôde ser convertida)")
             
-            # 2. Verificar colunas object com alta cardinalidade
             elif data_cleaned[col].dtype == 'object':
                 unique_ratio = data_cleaned[col].nunique() / len(data_cleaned)
                 if unique_ratio > 0.8 and data_cleaned[col].nunique() > 50:
                     columns_to_drop.append(col)
                     st.warning(f"Coluna '{col}' removida (alta cardinalidade: {data_cleaned[col].nunique()} valores únicos)")
             
-            # 3. Verificar colunas com tipos mistos
             elif data_cleaned[col].dtype == 'object':
-                # Tentar converter para numérico
                 try:
-                    # Primeiro, tentar conversão direta
                     data_cleaned[col] = pd.to_numeric(data_cleaned[col], errors='coerce')
                     if data_cleaned[col].isnull().all():
                         columns_to_drop.append(col)
@@ -282,7 +273,6 @@ class MLPipeline:
                     columns_to_drop.append(col)
                     st.warning(f"Coluna '{col}' removida (tipo problemático)")
         
-        # Remover colunas problemáticas
         if columns_to_drop:
             data_cleaned = data_cleaned.drop(columns=columns_to_drop)
             st.info(f"Removidas {len(columns_to_drop)} colunas problemáticas")
@@ -427,7 +417,6 @@ class MLPipeline:
 
     def _balance_classes(self, config, pipeline_data):
         if not config.get("balance_classes", False):
-            # Se não há balanceamento, usar dados selecionados
             pipeline_data['balanced_data'] = pipeline_data.get('selected_data', 
                                                               pipeline_data.get('processed_data', 
                                                                                pipeline_data.get('raw_data')))
@@ -471,26 +460,20 @@ class MLPipeline:
         """
         from sklearn.preprocessing import LabelEncoder
         
-        # 1. Remover valores nulos
         if y.isnull().any():
             st.warning(f"Removendo {y.isnull().sum()} valores nulos do target")
-            # Isso precisa ser tratado no nível do dataset, não apenas do y
             
-        # 2. Verificar se é contínuo demais
         if pd.api.types.is_numeric_dtype(y):
             unique_values = y.nunique()
             
-            # Se tem mais de 20 valores únicos, pode ser regressão
             if unique_values > 20:
                 st.warning(f"Target tem {unique_values} valores únicos - convertendo para classificação")
                 
-                # Usar quartis para criar classes
                 try:
                     y_binned = pd.qcut(y, q=4, labels=False, duplicates='drop')
                     st.info("Target convertido em 4 classes usando quartis")
                     y = y_binned
                 except Exception as e:
-                    # Se quartis falharem, usar bins fixos
                     try:
                         y_binned = pd.cut(y, bins=5, labels=False)
                         st.info("Target convertido em 5 classes usando bins fixos")
@@ -499,25 +482,21 @@ class MLPipeline:
                         st.error(f"Não foi possível converter target: {str(e2)}")
                         raise ValueError("Target não pôde ser preparado para classificação")
         
-        # 3. Converter para inteiros se for numérico
         if pd.api.types.is_numeric_dtype(y) and y.dtype != 'int64':
             try:
                 y = y.astype('int64')
             except:
-                # Se não conseguir converter para int, usar LabelEncoder
                 label_encoder = LabelEncoder()
                 y = pd.Series(label_encoder.fit_transform(y), index=y.index)
                 pipeline_data['target_encoder'] = label_encoder
                 pipeline_data['target_classes'] = label_encoder.classes_
         
-        # 4. Se for object, usar LabelEncoder
         elif y.dtype == 'object' or not pd.api.types.is_numeric_dtype(y):
             label_encoder = LabelEncoder()
             y = pd.Series(label_encoder.fit_transform(y), index=y.index)
             pipeline_data['target_encoder'] = label_encoder
             pipeline_data['target_classes'] = label_encoder.classes_
         
-        # 5. Verificação final
         if y.nunique() < 2:
             raise ValueError(f"Target deve ter pelo menos 2 classes. Atualmente tem: {y.nunique()}")
         
@@ -529,7 +508,6 @@ class MLPipeline:
         from sklearn.model_selection import train_test_split
         from sklearn.preprocessing import LabelEncoder
         
-        # Garantir que temos os dados para dividir
         data = pipeline_data.get('balanced_data', 
                                 pipeline_data.get('selected_data',
                                                 pipeline_data.get('processed_data',
@@ -541,9 +519,7 @@ class MLPipeline:
         test_size = config["test_size"]
         target_column = pipeline_data['data_analysis']['target_column']
         
-        # CORREÇÃO: Verificar se target_column ainda existe
         if target_column not in data.columns:
-            # Procurar por coluna target alternativa
             if 'target' in data.columns:
                 target_column = 'target'
             else:
@@ -552,7 +528,6 @@ class MLPipeline:
         X = data.drop(columns=[target_column])
         y = data[target_column]
         
-        # CORREÇÃO: Tratar target antes da divisão
         y = self._prepare_target_for_training(y, pipeline_data)
         
         try:
@@ -561,7 +536,6 @@ class MLPipeline:
             )
         except ValueError as e:
             if "stratify" in str(e):
-                # Se stratify falhar, fazer sem estratificação
                 X_train, X_test, y_train, y_test = train_test_split(
                     X, y, test_size=test_size, random_state=42
                 )
