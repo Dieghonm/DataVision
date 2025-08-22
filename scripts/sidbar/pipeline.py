@@ -110,26 +110,24 @@ class PipelineUI:
 
     def _execute_pipeline(self, config):
         try:
-            st.success("🚀 Pipeline iniciado!")
+            st.success("Pipeline iniciado!")
             
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            # Dicionário com as etapas e suas respectivas funções
             pipeline_steps = {
                 "Carregando dados...": self._load_data,
-                "📊 Analisando qualidade dos dados...": self._analyze_data,
-                "🔧 Preprocessando dados...": self._preprocess_data,
-                "🎯 Selecionando features...": self._feature_selection,
-                "⚖️ Balanceando classes...": self._balance_classes,
-                "✂️ Dividindo dataset...": self._split_dataset,
-                "🤖 Treinando modelo...": self._train_model,
-                "📈 Avaliando modelo...": self._evaluate_model,
-                "🔍 Otimizando hiperparâmetros...": self._hyperparameter_tuning,
-                "💾 Salvando resultados...": self._save_results
+                "Analisando qualidade dos dados...": self._analyze_data,
+                "Preprocessando dados...": self._preprocess_data,
+                "Selecionando features...": self._feature_selection,
+                "Balanceando classes...": self._balance_classes,
+                "Dividindo dataset...": self._split_dataset,
+                "Treinando modelo...": self._train_model,
+                "Avaliando modelo...": self._evaluate_model,
+                "Otimizando hiperparâmetros...": self._hyperparameter_tuning,
+                "Salvando resultados...": self._save_results
             }
             
-            # Filtra as etapas selecionadas baseado no config
             selected_steps = {}
             for step_name, step_function in pipeline_steps.items():
                 step_key = step_name.split("...")[-1].strip()
@@ -155,62 +153,49 @@ class PipelineUI:
                 elif "Salvando resultados" in step_name and "save_results" in config.get("steps", []):
                     selected_steps[step_name] = step_function
             
-            # Variável para armazenar dados entre as etapas
             pipeline_data = {}
-            
-            # Container para logs das etapas
             steps_container = st.container()
             
-            # Executa cada etapa do pipeline
             for i, (step_name, step_function) in enumerate(selected_steps.items()):
                 try:
-                    # Atualiza barra de progresso e status
                     progress = (i + 1) / len(selected_steps)
-                    status_text.text(f"⏳ {step_name}")
+                    status_text.text(f"Executando: {step_name}")
                     progress_bar.progress(progress)
                     
-                    # Cria um placeholder para esta etapa
                     with steps_container:
                         step_placeholder = st.empty()
-                        step_placeholder.info(f"🔄 Executando: {step_name}")
+                        step_placeholder.info(f"Executando: {step_name}")
                     
-                    # Executa a função da etapa
                     pipeline_data = step_function(config, pipeline_data)
                     
-                    # Atualiza o status da etapa para sucesso
                     with steps_container:
-                        step_placeholder.success(f"✅ {step_name.replace('...', ' concluído!')}")
+                        step_placeholder.success(f"{step_name.replace('...', ' concluído!')}")
                     
                 except Exception as step_error:
-                    # Atualiza o status da etapa para erro
                     with steps_container:
-                        step_placeholder.error(f"❌ Erro em {step_name}: {str(step_error)}")
+                        step_placeholder.error(f"Erro em {step_name}: {str(step_error)}")
                     st.error(f"Erro na etapa '{step_name}': {str(step_error)}")
                     raise step_error
             
-            # Finalização
             progress_bar.progress(1.0)
-            status_text.text("🎉 Pipeline concluído com sucesso!")
+            status_text.text("Pipeline concluído com sucesso!")
             
-            # Exibe resumo final
             with st.container():
-                st.success("🏆 **Pipeline Executado com Sucesso!**")
+                st.success("Pipeline Executado com Sucesso!")
                 if 'evaluation_results' in pipeline_data:
                     accuracy = pipeline_data['evaluation_results'].get('accuracy', 0)
                     f1 = pipeline_data['evaluation_results'].get('f1_score', 0)
-                    st.info(f"📊 **Accuracy Final:** {accuracy:.4f} | **F1-Score:** {f1:.4f}")
+                    st.info(f"Accuracy Final: {accuracy:.4f} | F1-Score: {f1:.4f}")
             
-            # Exibe configuração e resultados
             self._display_results(config, pipeline_data)
             
         except Exception as e:
-            st.error(f"💥 Erro na execução do pipeline: {str(e)}")
+            st.error(f"Erro na execução do pipeline: {str(e)}")
             return None
         
         return pipeline_data
 
     def _load_data(self, config, pipeline_data):
-        """Carrega os dados do session state"""
         try:
             if 'DF' not in st.session_state or st.session_state.DF is None:
                 raise ValueError("Nenhum DataFrame encontrado no session_state. Faça upload de um arquivo primeiro.")
@@ -225,7 +210,7 @@ class PipelineUI:
             pipeline_data['column_names'] = list(data.columns)
             
             st.info(f"Dados carregados: {data.shape[0]} amostras, {data.shape[1]} features")
-            st.write(f"**Colunas disponíveis:** {', '.join(data.columns[:10])}{'...' if len(data.columns) > 10 else ''}")
+            st.write(f"Colunas disponíveis: {', '.join(data.columns[:10])}{'...' if len(data.columns) > 10 else ''}")
             
         except Exception as e:
             raise Exception(f"Falha ao carregar dados: {str(e)}")
@@ -233,15 +218,12 @@ class PipelineUI:
         return pipeline_data
 
     def _analyze_data(self, config, pipeline_data):
-        """Analisa a qualidade dos dados"""
         try:
             data = pipeline_data['raw_data'].copy()
             
-            # Análise básica
             missing_values = data.isnull().sum()
             duplicates = data.duplicated().sum()
             
-            # Detecta coluna target
             target_column = None
             possible_targets = ['target', 'target_name', 'class', 'label', 'y']
             for col in possible_targets:
@@ -251,11 +233,13 @@ class PipelineUI:
             if target_column is None:
                 target_column = config.get("target_column", data.columns[-1])
             
-            # Análise da distribuição das classes
+            # Correção: Se target_column for 'target_name', usar 'target' se disponível
+            if target_column == 'target_name' and 'target' in data.columns:
+                target_column = 'target'
+            
             class_distribution = data[target_column].value_counts()
             class_balance_ratio = class_distribution.min() / class_distribution.max()
             
-            # Armazena informações da análise
             pipeline_data['data_analysis'] = {
                 'missing_values': missing_values[missing_values > 0].to_dict(),
                 'duplicates': duplicates,
@@ -265,8 +249,7 @@ class PipelineUI:
                 'is_imbalanced': class_balance_ratio < 0.5
             }
             
-            # Exibe informações
-            st.info("📊 Análise dos dados concluída!")
+            st.info("Análise dos dados concluída!")
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -277,7 +260,7 @@ class PipelineUI:
                 st.metric("Balanceamento", f"{class_balance_ratio:.2f}")
             
             if class_balance_ratio < 0.5:
-                st.warning(f"⚠️ Dataset desbalanceado detectado! Ratio: {class_balance_ratio:.2f}")
+                st.warning(f"Dataset desbalanceado detectado! Ratio: {class_balance_ratio:.2f}")
             
         except Exception as e:
             raise Exception(f"Falha na análise dos dados: {str(e)}")
@@ -285,41 +268,41 @@ class PipelineUI:
         return pipeline_data
 
     def _preprocess_data(self, config, pipeline_data):
-        """Preprocessa os dados com técnicas avançadas"""
         try:
             data = pipeline_data['raw_data'].copy()
             analysis = pipeline_data.get('data_analysis', {})
+            target_column = analysis.get('target_column')
             
-            # Tratamento de valores ausentes
+            # Remove colunas desnecessárias (mantém apenas target numérico)
+            if 'target_name' in data.columns and 'target' in data.columns:
+                data = data.drop(columns=['target_name'])
+                st.write("Coluna target_name removida")
+            
             if analysis.get('missing_values'):
                 numeric_columns = data.select_dtypes(include=['number']).columns
                 categorical_columns = data.select_dtypes(include=['object']).columns
                 
-                # Para numéricas: média ou mediana
                 fill_strategy = config.get("missing_strategy", "mean")
                 if fill_strategy == "mean":
                     data[numeric_columns] = data[numeric_columns].fillna(data[numeric_columns].mean())
                 elif fill_strategy == "median":
                     data[numeric_columns] = data[numeric_columns].fillna(data[numeric_columns].median())
                 
-                # Para categóricas: moda
                 for col in categorical_columns:
                     if data[col].isnull().any():
                         data[col] = data[col].fillna(data[col].mode()[0])
                 
-                st.write("✅ Valores ausentes tratados")
+                st.write("Valores ausentes tratados")
             
-            # Remove duplicatas
             if analysis.get('duplicates', 0) > 0:
                 data = data.drop_duplicates()
-                st.write("✅ Duplicatas removidas")
+                st.write("Duplicatas removidas")
             
-            # Tratamento de outliers (usando IQR)
             if config.get("remove_outliers", False):
                 numeric_columns = data.select_dtypes(include=['number']).columns
-                # Exclui target das features numéricas
-                numeric_columns = [col for col in numeric_columns if 'target' not in col.lower()]
+                numeric_columns = [col for col in numeric_columns if col != target_column]
                 
+                outliers_removed = 0
                 for col in numeric_columns:
                     Q1 = data[col].quantile(0.25)
                     Q3 = data[col].quantile(0.75)
@@ -329,14 +312,13 @@ class PipelineUI:
                     
                     outliers_before = len(data)
                     data = data[(data[col] >= lower_bound) & (data[col] <= upper_bound)]
-                    outliers_removed = outliers_before - len(data)
+                    outliers_removed += outliers_before - len(data)
                     
                 if outliers_removed > 0:
-                    st.write(f"✅ {outliers_removed} outliers removidos")
+                    st.write(f"{outliers_removed} outliers removidos")
             
-            # Encoding categórico
             categorical_columns = data.select_dtypes(include=['object']).columns
-            categorical_columns = [col for col in categorical_columns if 'target' not in col.lower()]
+            categorical_columns = [col for col in categorical_columns if col != target_column]
             
             if len(categorical_columns) > 0:
                 encoding_method = config.get("encoding_method", "label")
@@ -351,13 +333,12 @@ class PipelineUI:
                 elif encoding_method == "onehot":
                     data = pd.get_dummies(data, columns=categorical_columns, prefix=categorical_columns)
                 
-                st.write(f"✅ Encoding categórico ({encoding_method}) aplicado")
+                st.write(f"Encoding categórico ({encoding_method}) aplicado")
             
-            # Normalização
             scaling_method = config.get("scaling", "standard")
             if scaling_method != "none":
                 numeric_columns = data.select_dtypes(include=['number']).columns
-                numeric_columns = [col for col in numeric_columns if 'target' not in col.lower()]
+                numeric_columns = [col for col in numeric_columns if col != target_column]
                 
                 if len(numeric_columns) > 0:
                     if scaling_method == "standard":
@@ -372,7 +353,7 @@ class PipelineUI:
                     
                     data[numeric_columns] = scaler.fit_transform(data[numeric_columns])
                     pipeline_data['scaler'] = scaler
-                    st.write(f"✅ Normalização ({scaling_method}) aplicada")
+                    st.write(f"Normalização ({scaling_method}) aplicada")
             
             pipeline_data['processed_data'] = data
             st.info(f"Preprocessamento concluído. Shape: {data.shape}")
@@ -383,7 +364,6 @@ class PipelineUI:
         return pipeline_data
 
     def _feature_selection(self, config, pipeline_data):
-        """Seleção inteligente de features"""
         try:
             if not config.get("feature_selection", False):
                 pipeline_data['selected_data'] = pipeline_data['processed_data']
@@ -392,11 +372,9 @@ class PipelineUI:
             data = pipeline_data['processed_data'].copy()
             target_column = pipeline_data['data_analysis']['target_column']
             
-            # Separa features e target
             X = data.drop(columns=[target_column])
             y = data[target_column]
             
-            # Método de seleção
             selection_method = config.get("selection_method", "selectkbest")
             n_features = config.get("n_features", min(10, len(X.columns)))
             
@@ -414,7 +392,6 @@ class PipelineUI:
                 X_selected = selector.fit_transform(X, y)
                 selected_features = X.columns[selector.get_support()].tolist()
             
-            # Reconstrói o dataset com features selecionadas
             selected_data = pd.DataFrame(X_selected, columns=selected_features, index=X.index)
             selected_data[target_column] = y
             
@@ -422,17 +399,15 @@ class PipelineUI:
             pipeline_data['selected_features'] = selected_features
             pipeline_data['feature_selector'] = selector
             
-            st.write(f"✅ {len(selected_features)} features selecionadas: {', '.join(selected_features[:5])}{'...' if len(selected_features) > 5 else ''}")
+            st.write(f"{len(selected_features)} features selecionadas: {', '.join(selected_features[:5])}{'...' if len(selected_features) > 5 else ''}")
             
         except Exception as e:
-            # Se falhar, usa dados processados
             pipeline_data['selected_data'] = pipeline_data['processed_data']
             st.warning(f"Seleção de features falhou, usando todas as features: {str(e)}")
         
         return pipeline_data
 
     def _balance_classes(self, config, pipeline_data):
-        """Balanceamento de classes"""
         try:
             if not config.get("balance_classes", False):
                 pipeline_data['balanced_data'] = pipeline_data['selected_data']
@@ -443,7 +418,7 @@ class PipelineUI:
             
             if not analysis.get('is_imbalanced', False):
                 pipeline_data['balanced_data'] = data
-                st.write("✅ Dataset já está balanceado")
+                st.write("Dataset já está balanceado")
                 return pipeline_data
             
             target_column = analysis['target_column']
@@ -458,12 +433,11 @@ class PipelineUI:
                     smote = SMOTE(random_state=42)
                     X_balanced, y_balanced = smote.fit_resample(X, y)
                     
-                    # Reconstrói o DataFrame
                     balanced_data = pd.DataFrame(X_balanced, columns=X.columns)
                     balanced_data[target_column] = y_balanced
                     
                     pipeline_data['balanced_data'] = balanced_data
-                    st.write(f"✅ SMOTE aplicado. Shape: {balanced_data.shape}")
+                    st.write(f"SMOTE aplicado. Shape: {balanced_data.shape}")
                     
                 except ImportError:
                     st.warning("imblearn não instalado. Usando class_weight='balanced' no modelo.")
@@ -473,7 +447,7 @@ class PipelineUI:
             else:
                 pipeline_data['balanced_data'] = data
                 pipeline_data['use_class_weight'] = True
-                st.write("✅ Usando class_weight='balanced'")
+                st.write("Usando class_weight='balanced'")
             
         except Exception as e:
             pipeline_data['balanced_data'] = pipeline_data['selected_data']
@@ -482,7 +456,6 @@ class PipelineUI:
         return pipeline_data
 
     def _split_dataset(self, config, pipeline_data):
-        """Divide o dataset em treino e teste"""
         try:
             from sklearn.model_selection import train_test_split
             from sklearn.preprocessing import LabelEncoder
@@ -491,26 +464,22 @@ class PipelineUI:
             test_size = config["test_size"]
             target_column = pipeline_data['data_analysis']['target_column']
             
-            # Separa features e target
             X = data.drop(columns=[target_column])
             y = data[target_column]
             
-            # Se target for categórico (string), aplica LabelEncoder
             if y.dtype == 'object' or not pd.api.types.is_numeric_dtype(y):
-                st.write(f"🔄 Target categórico detectado. Aplicando encoding...")
+                st.write(f"Target categórico detectado. Aplicando encoding...")
                 label_encoder = LabelEncoder()
                 y = label_encoder.fit_transform(y)
                 pipeline_data['target_encoder'] = label_encoder
                 pipeline_data['target_classes'] = label_encoder.classes_
                 st.write(f"Classes: {', '.join(label_encoder.classes_)}")
             
-            # Divide o dataset com estratificação
             try:
                 X_train, X_test, y_train, y_test = train_test_split(
                     X, y, test_size=test_size, random_state=42, stratify=y
                 )
             except ValueError:
-                # Se estratificação falhar, divide sem estratificação
                 X_train, X_test, y_train, y_test = train_test_split(
                     X, y, test_size=test_size, random_state=42
                 )
@@ -533,12 +502,10 @@ class PipelineUI:
         return pipeline_data
 
     def _train_model(self, config, pipeline_data):
-        """Treina o modelo com configurações otimizadas"""
         try:
             algorithm = config["algorithm"]
             algo_params = config["algo_params"].copy()
             
-            # Adiciona class_weight se necessário
             if pipeline_data.get('use_class_weight', False):
                 if algorithm in ['random_forest', 'logistic_regression']:
                     algo_params['class_weight'] = 'balanced'
@@ -546,7 +513,6 @@ class PipelineUI:
             X_train = pipeline_data['X_train']
             y_train = pipeline_data['y_train']
             
-            # Seleciona e treina o algoritmo
             if algorithm == "random_forest":
                 from sklearn.ensemble import RandomForestClassifier
                 model = RandomForestClassifier(**algo_params)
@@ -567,7 +533,6 @@ class PipelineUI:
             else:
                 raise ValueError(f"Algoritmo não suportado: {algorithm}")
             
-            # Treina o modelo
             model.fit(X_train, y_train)
             
             pipeline_data['trained_model'] = model
@@ -575,16 +540,14 @@ class PipelineUI:
             
             st.info(f"Modelo {algorithm} treinado com sucesso!")
             
-            # Mostra feature importance se disponível
             if hasattr(model, 'feature_importances_'):
                 importances = model.feature_importances_
                 feature_names = pipeline_data['feature_columns']
                 
-                # Top 5 features mais importantes
                 indices = np.argsort(importances)[-5:][::-1]
                 top_features = [(feature_names[i], importances[i]) for i in indices]
                 
-                st.write("🎯 **Top 5 Features mais importantes:**")
+                st.write("Top 5 Features mais importantes:")
                 for feature, importance in top_features:
                     st.write(f"- {feature}: {importance:.4f}")
             
@@ -594,7 +557,6 @@ class PipelineUI:
         return pipeline_data
 
     def _evaluate_model(self, config, pipeline_data):
-        """Avaliação completa do modelo"""
         try:
             from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
                                        f1_score, classification_report, confusion_matrix)
@@ -603,10 +565,8 @@ class PipelineUI:
             X_test = pipeline_data['X_test']
             y_test = pipeline_data['y_test']
             
-            # Predições
             y_pred = model.predict(X_test)
             
-            # Calcula todas as métricas
             results = {
                 "accuracy": accuracy_score(y_test, y_pred),
                 "precision": precision_score(y_test, y_pred, average='weighted', zero_division=0),
@@ -614,13 +574,11 @@ class PipelineUI:
                 "f1_score": f1_score(y_test, y_pred, average='weighted', zero_division=0)
             }
             
-            # Validação cruzada
             if config.get("use_cv", True):
                 from sklearn.model_selection import cross_val_score, StratifiedKFold
                 cv = StratifiedKFold(n_splits=config.get("cv_folds", 5), shuffle=True, random_state=42)
                 
                 try:
-                    # Usa dados completos para CV
                     X_full = pd.concat([pipeline_data['X_train'], pipeline_data['X_test']])
                     y_full = np.concatenate([pipeline_data['y_train'], pipeline_data['y_test']])
                     
@@ -628,7 +586,7 @@ class PipelineUI:
                     results["cv_mean"] = cv_scores.mean()
                     results["cv_std"] = cv_scores.std()
                     
-                    st.write(f"📊 **Validação Cruzada:** {results['cv_mean']:.4f} (±{results['cv_std']:.4f})")
+                    st.write(f"Validação Cruzada: {results['cv_mean']:.4f} (±{results['cv_std']:.4f})")
                 except Exception as cv_error:
                     st.warning(f"Validação cruzada falhou: {str(cv_error)}")
             
@@ -636,8 +594,7 @@ class PipelineUI:
             pipeline_data['predictions'] = y_pred
             pipeline_data['confusion_matrix'] = confusion_matrix(y_test, y_pred)
             
-            # Exibe métricas principais
-            st.info("🎯 Avaliação concluída!")
+            st.info("Avaliação concluída!")
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
@@ -649,9 +606,8 @@ class PipelineUI:
             with col4:
                 st.metric("F1-Score", f"{results['f1_score']:.4f}")
             
-            # Matriz de confusão
-            if len(np.unique(y_test)) <= 10:  # Só mostra se não tiver muitas classes
-                st.write("📊 **Matriz de Confusão:**")
+            if len(np.unique(y_test)) <= 10:
+                st.write("Matriz de Confusão:")
                 st.write(pd.DataFrame(
                     pipeline_data['confusion_matrix'],
                     index=[f"Real_{i}" for i in range(len(pipeline_data['confusion_matrix']))],
@@ -664,7 +620,6 @@ class PipelineUI:
         return pipeline_data
 
     def _hyperparameter_tuning(self, config, pipeline_data):
-        """Otimização automática de hiperparâmetros"""
         try:
             if not config.get("tune_hyperparameters", False):
                 return pipeline_data
@@ -675,7 +630,6 @@ class PipelineUI:
             X_train = pipeline_data['X_train']
             y_train = pipeline_data['y_train']
             
-            # Define espaços de busca para cada algoritmo
             param_grids = {
                 "random_forest": {
                     'n_estimators': [50, 100, 200, 300],
@@ -746,21 +700,23 @@ class PipelineUI:
         return pipeline_data
 
     def _save_results(self, config, pipeline_data):
-        """Salva os resultados"""
+        """Salva o modelo em data/models e os resultados em data/results"""
         try:
             import pickle
             import json
+            import os
             from datetime import datetime
+            
+            os.makedirs("data/models", exist_ok=True)
+            os.makedirs("data/results", exist_ok=True)
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            # Salva o modelo
-            model_path = f"model_{timestamp}.pkl"
+            model_path = os.path.join("data", "models", f"model_{timestamp}.pkl")
             with open(model_path, 'wb') as f:
                 pickle.dump(pipeline_data['trained_model'], f)
             
-            # Salva as métricas e informações completas
-            results_path = f"results_{timestamp}.json"
+            results_path = os.path.join("data", "results", f"results_{timestamp}.json")
             results_to_save = {
                 "config": config,
                 "evaluation_results": pipeline_data['evaluation_results'],
@@ -780,7 +736,7 @@ class PipelineUI:
                 'results': results_path
             }
             
-            st.info(f"Resultados salvos: {model_path}, {results_path}")
+            st.info(f"Resultados salvos em:\n- {model_path}\n- {results_path}")
             
         except Exception as e:
             raise Exception(f"Falha ao salvar resultados: {str(e)}")
@@ -789,9 +745,8 @@ class PipelineUI:
 
     def _display_results(self, config, pipeline_data):
         """Exibe os resultados finais com análises detalhadas"""
-        
-        # Resumo executivo
-        st.subheader("📊 Resumo Executivo")
+
+        st.subheader(" Resumo Executivo")
         
         if 'evaluation_results' in pipeline_data:
             results = pipeline_data['evaluation_results']
@@ -800,19 +755,18 @@ class PipelineUI:
             with col1:
                 accuracy = results.get('accuracy', 0)
                 color = "normal" if accuracy >= 0.8 else "inverse"
-                st.metric("🎯 Accuracy Final", f"{accuracy:.4f}", delta=None)
+                st.metric(" Accuracy Final", f"{accuracy:.4f}", delta=None)
                 
             with col2:
                 f1 = results.get('f1_score', 0)
-                st.metric("📈 F1-Score", f"{f1:.4f}")
+                st.metric(" F1-Score", f"{f1:.4f}")
                 
             with col3:
                 cv_mean = results.get('cv_mean', 0)
                 if cv_mean > 0:
-                    st.metric("🔄 CV Score", f"{cv_mean:.4f}")
+                    st.metric("CV Score", f"{cv_mean:.4f}")
         
-        # Recomendações para melhorar
-        st.subheader("💡 Recomendações para Melhorar a Performance")
+        st.subheader(" Recomendações para Melhorar a Performance")
         
         if 'evaluation_results' in pipeline_data:
             accuracy = pipeline_data['evaluation_results'].get('accuracy', 0)
@@ -828,19 +782,18 @@ class PipelineUI:
                 recommendations.append("🟢 **Boa accuracy (>80%)**: Modelo performando bem!")
             
             if analysis.get('is_imbalanced', False):
-                recommendations.append("⚖️ **Dataset desbalanceado**: Ative o balanceamento de classes (SMOTE)")
+                recommendations.append(" **Dataset desbalanceado**: Ative o balanceamento de classes (SMOTE)")
             
             if len(pipeline_data.get('selected_features', pipeline_data.get('feature_columns', []))) > 20:
-                recommendations.append("🎯 **Muitas features**: Considere seleção de features mais agressiva")
+                recommendations.append(" **Muitas features**: Considere seleção de features mais agressiva")
             
             if not config.get('tune_hyperparameters', False):
-                recommendations.append("🔧 **Hiperparâmetros**: Ative a otimização automática de hiperparâmetros")
+                recommendations.append(" **Hiperparâmetros**: Ative a otimização automática de hiperparâmetros")
             
             for rec in recommendations:
                 st.write(rec)
         
-        # Detalhes técnicos
-        with st.expander("🔧 Configuração Utilizada"):
+        with st.expander(" Configuração Utilizada"):
             col1, col2 = st.columns(2)
             with col1:
                 st.json({
@@ -857,28 +810,28 @@ class PipelineUI:
                     "tune_hyperparameters": config.get("tune_hyperparameters", False)
                 })
         
-        with st.expander("📈 Resultados Detalhados"):
+        with st.expander(" Resultados Detalhados"):
             if 'evaluation_results' in pipeline_data:
                 st.json(pipeline_data['evaluation_results'])
             
             if 'best_params' in pipeline_data:
-                st.write("🏆 **Melhores Hiperparâmetros:**")
+                st.write("**Melhores Hiperparâmetros:**")
                 st.json(pipeline_data['best_params'])
             
             if 'selected_features' in pipeline_data:
-                st.write(f"🎯 **Features Selecionadas ({len(pipeline_data['selected_features'])}):**")
+                st.write(f" **Features Selecionadas ({len(pipeline_data['selected_features'])}):**")
                 st.write(", ".join(pipeline_data['selected_features']))
         
-        with st.expander("💾 Arquivos Gerados"):
+        with st.expander("Arquivos Gerados"):
             if 'saved_files' in pipeline_data:
                 for file_type, path in pipeline_data['saved_files'].items():
                     st.write(f"- **{file_type.title()}:** `{path}`")
 
     def render_pipeline(self):
-        st.sidebar.title("🚀 Pipeline ML")
+        st.sidebar.title("Pipeline ML")
 
         # Configurações Básicas
-        st.sidebar.subheader("📊 Configurações Básicas")
+        st.sidebar.subheader("Configurações Básicas")
         
         data_source = st.sidebar.selectbox(
             "Fonte de dados:",
@@ -924,8 +877,7 @@ class PipelineUI:
             help="Proporção dos dados para teste"
         )
 
-        # Melhorias para Accuracy (Colapsável)
-        with st.sidebar.expander("🎯 Melhorias de Performance"):
+        with st.sidebar.expander("Melhorias de Performance"):
             tune_hyperparameters = st.checkbox(
                 "Otimizar Hiperparâmetros",
                 help="Busca automática pelos melhores parâmetros"
@@ -946,7 +898,6 @@ class PipelineUI:
                 help="Remove outliers usando método IQR"
             )
 
-        # Configurações de Preprocessamento (Colapsável)
         with st.sidebar.expander("🔧 Preprocessamento"):
             scaling = st.selectbox(
                 "Normalização:", 
@@ -966,11 +917,9 @@ class PipelineUI:
                 help="Estratégia para tratar valores ausentes"
             )
 
-        # Parâmetros do Algoritmo (Colapsável)
         with st.sidebar.expander("⚙️ Parâmetros do Algoritmo"):
             algo_params = self._render_algorithm_params_simple(algorithm)
 
-        # Configurações Avançadas (Colapsável)
         with st.sidebar.expander("🔬 Configurações Avançadas"):
             use_cv = st.checkbox(
                 "Validação Cruzada",
@@ -991,7 +940,6 @@ class PipelineUI:
                 help="Métricas de avaliação do modelo"
             )
 
-            # Configurações condicionais
             if feature_selection:
                 selection_method = st.selectbox(
                     "Método de Seleção:",
@@ -1016,7 +964,6 @@ class PipelineUI:
             else:
                 balance_method = "smote"
 
-        # Pipeline Steps (automático baseado nas seleções)
         steps = ["load_data", "analyze_data", "preprocess_data", "train_model", "evaluate_model"]
         if feature_selection:
             steps.insert(-2, "feature_selection")
@@ -1025,7 +972,6 @@ class PipelineUI:
         if tune_hyperparameters:
             steps.insert(-1, "hyperparameter_tuning")
 
-        # Botão de Execução
         st.sidebar.markdown("---")
         if self.current_data is not None:
             if st.sidebar.button("🚀 Executar Pipeline", type="primary", use_container_width=True):
