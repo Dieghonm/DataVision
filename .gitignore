@@ -21,3 +21,6 @@ Thumbs.db
 
 logs/
 temp/
+
+data/models/
+data/results/
