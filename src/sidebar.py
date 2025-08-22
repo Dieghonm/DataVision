@@ -1,5 +1,4 @@
 import streamlit as st
-
 from scripts.sidbar.modelo import model_sidebar
 from scripts.sidbar.pipeline import pipeline_sidebar
 

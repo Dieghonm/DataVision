@@ -10,14 +10,19 @@ st.set_page_config(
 )
 
 def inicializar_session_state():
-    if "categoria" not in st.session_state:
-        st.session_state.categoria = "Pipeline"
-    if "data_source" not in st.session_state:
-        st.session_state.data_source = None
-    if "DF" not in st.session_state:
-        st.session_state.DF = None
-    if "pipeline_config" not in st.session_state:
-        st.session_state.pipeline_config = None
+    defaults = {
+        "categoria": "Pipeline",
+        "data_source": None,
+        "DF": None,
+        "pipeline_config": None,
+        "current_data": None,
+        "dataset_name": None,
+        "executions": []
+    }
+    
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
 def main():
     st.title("DataVision EBAC SEMANTIX")
